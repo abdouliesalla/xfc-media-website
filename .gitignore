@@ -1,0 +1,6 @@
+# Original source files: not used by the site (the Eastfield .MOV is over GitHub's 100 MB limit)
+assets/img/past work/
+
+# Local tooling and macOS clutter
+.claude/
+.DS_Store
