@@ -1,7 +1,8 @@
 /* =========================================================
    XFC Media — styles
    Black and white like the crowned-X mark, crown blue for actions only.
-   Type: Schibsted Grotesk. Rounded, inset media panels.
+   Type: Clash Grotesk (display), Switzer (text), Boska italic (hero accents).
+   Rounded, inset media panels.
    ========================================================= */
 
 :root {
@@ -243,11 +244,6 @@ button, input, select, textarea { font: inherit; color: inherit; }
   .js .reel__panel--side:first-child { animation-name: deal-right; }
 }
 
-/* Headings reveal once as they enter */
-@media (prefers-reduced-motion: no-preference) {
-
-}
-
 /* ---------- Clients marquee ---------- */
 .clients { background: var(--black); color: var(--white); padding: clamp(4rem, 8vw, 6.5rem) 0 clamp(4rem, 8vw, 6rem); text-align: center; }
 .clients__title { font-size: var(--fs-sm); font-weight: 500; letter-spacing: 0; color: var(--gray-dark); margin-bottom: 2.5rem; padding-inline: var(--gutter); line-height: 1.4; }
@@ -259,21 +255,22 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .marquee__track {
   display: flex; align-items: center; flex-shrink: 0; gap: clamp(0.75rem, 1.4vw, 1.25rem);
   padding-right: clamp(0.75rem, 1.4vw, 1.25rem);
-  animation: marquee 32s linear infinite;
+  animation: marquee var(--marquee-dur, 32s) linear infinite;
 }
 .marquee.is-paused .marquee__track { animation-play-state: paused; }
 .marquee__track li {
-  display: grid; place-items: center; flex: none;
-  height: clamp(84px, 9vw, 112px); padding: 0 clamp(1.5rem, 2.6vw, 2.25rem);
-  background: #F4F5F7; border-radius: var(--r-lg);
+  flex: none; box-sizing: border-box;
+  width: clamp(148px, 17vw, 236px); height: clamp(78px, 8.4vw, 112px);
+  padding: clamp(12px, 1.3vw, 18px) clamp(16px, 1.9vw, 26px);
+  background: #F4F5F7; border-radius: var(--r-lg); overflow: hidden;
 }
-.marquee__track li:has(img[src*="eastfield"]) { background: #15171B; border: 1px solid var(--line-dark); }
-.marquee__track img { height: 62%; width: auto; max-width: 200px; object-fit: contain; }
+.marquee__track li:has(img[src*="eastfield"]) { background: #15171B; box-shadow: inset 0 0 0 1px var(--line-dark); }
+.marquee__track img { display: block; width: 100%; height: 100%; max-width: none; object-fit: contain; }
 @keyframes marquee { to { transform: translateX(-100%); } }
 @media (prefers-reduced-motion: reduce) {
   .marquee { flex-wrap: wrap; justify-content: center; -webkit-mask-image: none; mask-image: none; }
   .marquee__track { animation: none; flex-wrap: wrap; justify-content: center; padding: 0 var(--gutter); }
-  .marquee__track[aria-hidden] { display: none; }
+  .marquee__track[aria-hidden], .marquee__track li[aria-hidden] { display: none; }
   .marquee__toggle { display: none; }
 }
 .marquee__toggle {
@@ -714,3 +711,8 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .hero__title .accent { color: var(--sky); padding-right: 0.04em; }
 .hero__title .swap__w { padding-right: 0.06em; transition: color 600ms ease; }
 .swap { clip-path: inset(-0.12em -0.6em -0.3em -0.6em); }
+
+
+/* When "grows your <word>" can't hold every word on one line, the word takes its own line,
+   so the headline height never changes while the words cycle (no layout jump). */
+.swap.is-block { display: grid; justify-content: center; width: auto !important; }

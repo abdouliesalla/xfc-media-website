@@ -27,6 +27,7 @@
     toggle.querySelector(".visually-hidden").textContent = open ? "Close menu" : "Open menu";
     menu.hidden = !open;
     document.body.style.overflow = open ? "hidden" : "";
+    ["main", "footer"].forEach(function (sel) { var n = $(sel); if (n) n.inert = open; });
     if (open) $("a", menu).focus();
   }
   if (toggle && menu) {
@@ -110,10 +111,43 @@
   var marquee = $("[data-marquee]");
   if (marquee) {
     var track = $(".marquee__track", marquee);
+    var originals = $$("li", track);
+    var fill = function () {
+      var guard = 0;
+      while (track.scrollWidth < window.innerWidth * 1.1 && guard++ < 12) {
+        originals.forEach(function (li) {
+          var c = li.cloneNode(true);
+          c.setAttribute("aria-hidden", "true");
+          $$("img", c).forEach(function (img) { img.alt = ""; });
+          track.appendChild(c);
+        });
+      }
+    };
+    fill();
     var copy = track.cloneNode(true);
     copy.setAttribute("aria-hidden", "true");
     $$("img", copy).forEach(function (img) { img.alt = ""; });
     marquee.appendChild(copy);
+    var setSpeed = function () {
+      marquee.style.setProperty("--marquee-dur", Math.max(18, track.scrollWidth / 55).toFixed(1) + "s");   /* ~55px per second */
+    };
+    setSpeed();
+    window.addEventListener("load", setSpeed);
+    /* Rotating a phone or widening the window: top the loop up so it never shows a gap */
+    var mTimer;
+    window.addEventListener("resize", function () {
+      clearTimeout(mTimer);
+      mTimer = setTimeout(function () {
+        if (track.scrollWidth >= window.innerWidth * 1.1) return;
+        fill();
+        var fresh = track.cloneNode(true);
+        fresh.setAttribute("aria-hidden", "true");
+        $$("img", fresh).forEach(function (img) { img.alt = ""; });
+        marquee.replaceChild(fresh, copy);
+        copy = fresh;
+        setSpeed();
+      }, 200);
+    });
 
     var mToggle = $("[data-marquee-toggle]");
     mToggle.addEventListener("click", function () {
@@ -148,13 +182,17 @@
         panel.classList.add("is-animating");
         panel.style.height = "0px";
       }
-      panel.addEventListener("transitionend", function done(e) {
-        if (e.propertyName !== "height") return;
+      var finished = false;
+      var done = function (e) {
+        if (finished || (e && e.propertyName !== "height")) return;
+        finished = true;
         panel.removeEventListener("transitionend", done);
         panel.classList.remove("is-animating");
         panel.style.height = "";
         if (btn.getAttribute("aria-expanded") !== "true") panel.hidden = true;
-      });
+      };
+      panel.addEventListener("transitionend", done);
+      setTimeout(done, 600);   /* safety net: the transition is 420ms */
     }
 
     buttons.forEach(function (btn) {
@@ -438,14 +476,31 @@
       m.remove();
       return w;
     };
+    var visual = document.querySelector(".hero__visual");
+    var checkFit = function () {
+      /* Try every word; if any changes the headline height, give the word its own line */
+      swap.classList.remove("is-block");
+      var shown = swap.querySelector(".swap__w:not(.is-out)") || current;
+      var keep = shown.textContent, keepW = swap.style.width, heights = {};
+      swap.style.width = "";
+      words.forEach(function (w) { shown.textContent = w; heights[visual.getBoundingClientRect().height.toFixed(0)] = 1; });
+      shown.textContent = keep; swap.style.width = keepW;
+      if (Object.keys(heights).length > 1) { swap.classList.add("is-block"); swap.style.width = ""; }
+    };
+    var isBlock = function () { return swap.classList.contains("is-block"); };
+    var resizeTimer;
+    window.addEventListener("resize", function () { clearTimeout(resizeTimer); resizeTimer = setTimeout(checkFit, 150); });
+
     var step = function (i) {
       if (i >= words.length) { swap.style.width = ""; return; }
       var next = document.createElement("span");
       next.className = "swap__w is-in";
       next.textContent = words[i];
       next.style.color = colors[i];
-      swap.style.width = swap.getBoundingClientRect().width + "px";
-      requestAnimationFrame(function () { swap.style.width = measure(words[i]) + "px"; });
+      if (!isBlock()) {
+        swap.style.width = swap.getBoundingClientRect().width + "px";
+        requestAnimationFrame(function () { swap.style.width = measure(words[i]) + "px"; });
+      }
       current.classList.remove("is-in");
       current.classList.add("is-out");
       var old = current;
@@ -454,7 +509,7 @@
       current = next;
       setTimeout(function () { step(i + 1); }, i === words.length - 1 ? 900 : 1150);
     };
-    var start = function () { setTimeout(function () { step(0); }, 1700); };
+    var start = function () { checkFit(); setTimeout(function () { step(0); }, 1700); };
     if (document.fonts && document.fonts.ready) document.fonts.ready.then(start); else start();
   }
 
