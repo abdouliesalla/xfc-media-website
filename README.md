@@ -38,9 +38,17 @@ To add a new case study, copy one `<article class="case">` block in `index.html`
 
 ## Consultation form
 
-Ready for **Netlify Forms** (deploy to Netlify and requests arrive in the Netlify dashboard).
-On any other host it falls back to opening the visitor's email app, addressed to info@xfcmedia.com.
-To use Formspree or similar, change the `fetch("/")` URL in `js/main.js`.
+Submissions go to **Formspree** (`https://formspree.io/f/xrpqpkqw`, set as the form's `action` in `index.html`),
+so the form works on any host, including GitHub Pages.
+
+- The script in `js/main.js` sends the fields as JSON with a subject like
+  "Consultation request from Jane Doe (Smile Co)", and selected services joined into one line.
+- `_gotcha` is Formspree's spam trap; real visitors never see it.
+- If Formspree rejects a request or can't be reached, visitors see an error with a link to email info@xfcmedia.com,
+  and what they typed stays in the form.
+- With JavaScript off, the form still posts straight to Formspree.
+
+To change where submissions go, update the form's `action` URL.
 
 ## Design tokens
 

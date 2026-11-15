@@ -133,21 +133,28 @@
     };
     setSpeed();
     window.addEventListener("load", setSpeed);
-    /* Rotating a phone or widening the window: top the loop up so it never shows a gap */
-    var mTimer;
-    window.addEventListener("resize", function () {
-      clearTimeout(mTimer);
-      mTimer = setTimeout(function () {
-        if (track.scrollWidth >= window.innerWidth * 1.1) return;
+    /* Rotating a phone or widening the window: top the loop up so it never shows a gap.
+       ResizeObserver fires after the new layout has settled (window "resize" can fire too early). */
+    var topUp = function () {
+      if (track.scrollWidth < window.innerWidth * 1.1) {
         fill();
         var fresh = track.cloneNode(true);
         fresh.setAttribute("aria-hidden", "true");
         $$("img", fresh).forEach(function (img) { img.alt = ""; });
         marquee.replaceChild(fresh, copy);
         copy = fresh;
-        setSpeed();
-      }, 200);
-    });
+      }
+      setSpeed();
+    };
+    if ("ResizeObserver" in window) {
+      /* Adding cards doesn't change the marquee's own box (it clips), so this can't loop */
+      new ResizeObserver(topUp).observe(marquee);
+    }
+    /* Backup for browsers or moments where the observer doesn't report; topUp is safe to repeat */
+    var mTimer;
+    var lateCheck = function () { clearTimeout(mTimer); mTimer = setTimeout(topUp, 300); };
+    window.addEventListener("resize", lateCheck);
+    window.addEventListener("orientationchange", lateCheck);
 
     var mToggle = $("[data-marquee-toggle]");
     mToggle.addEventListener("click", function () {
@@ -246,26 +253,25 @@
 
     function el(tag, text) { var n = document.createElement(tag); if (text) n.textContent = text; return n; }
 
-    function mailto(data) {
-      var body = [
-        "Name: " + data.get("name"),
-        "Business: " + (data.get("business") || "-"),
-        "Email: " + data.get("email"),
-        "Phone: " + (data.get("phone") || "-"),
-        "Industry: " + (data.get("industry") || "-"),
-        "Interested in: " + (data.getAll("services").join(", ") || "-"),
-        "",
-        data.get("message")
-      ].join("\n");
-      window.location.href = "mailto:info@xfcmedia.com?subject=" +
-        encodeURIComponent("Consultation request from " + data.get("name")) +
-        "&body=" + encodeURIComponent(body);
+    /* Messages under the submit button: success, or an error with a way to reach us anyway */
+    function showStatus(kind, text) {
+      status.innerHTML = "";
+      status.classList.remove("is-success", "is-error");
+      if (!kind) return;
+      status.classList.add(kind === "success" ? "is-success" : "is-error");
+      status.appendChild(document.createTextNode(text));
+      if (kind === "error") {
+        status.appendChild(document.createTextNode(" You can also email us at "));
+        var mail = el("a", "info@xfcmedia.com");
+        mail.href = "mailto:info@xfcmedia.com";
+        status.appendChild(mail);
+        status.appendChild(document.createTextNode("."));
+      }
     }
 
     form.addEventListener("submit", function (e) {
       e.preventDefault();
-      status.textContent = "";
-      status.classList.remove("is-success");
+      showStatus(null);
 
       var failed = checks.filter(function (c) { return !validate(c); });
       if (failed.length) {
@@ -286,28 +292,58 @@
       summary.hidden = true;
 
       var data = new FormData(form);
-      if (data.get("website")) return; // spam trap
+      if (data.get("_gotcha")) return; // spam trap
 
+      var name = String(data.get("name") || "").trim();
+      var business = String(data.get("business") || "").trim();
+      var payload = {
+        name: name,
+        email: String(data.get("email") || "").trim(),
+        business: business,
+        phone: String(data.get("phone") || "").trim(),
+        industry: data.get("industry") || "",
+        services: data.getAll("services").join(", "),
+        message: String(data.get("message") || "").trim(),
+        _subject: "Consultation request from " + name + (business ? " (" + business + ")" : "")
+      };
+
+      var label = submit.querySelector(".btn__label") || submit;
       submit.disabled = true;
-      (submit.querySelector(".btn__label") || submit).textContent = "Sending request";
+      label.textContent = "Sending request";
 
-      // Netlify Forms when hosted on Netlify; otherwise the visitor's email app.
-      fetch("/", {
+      /* Formspree: JSON in, JSON out (status 200 on success, 4xx with { errors: [...] } otherwise) */
+      fetch(form.action, {
         method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        body: new URLSearchParams(data).toString()
+        headers: { "Content-Type": "application/json", "Accept": "application/json" },
+        body: JSON.stringify(payload)
       }).then(function (res) {
-        if (!res.ok) throw new Error("No form endpoint");
-        form.reset();
-        status.textContent = "Consultation request sent. We'll reply by email to set up a time.";
-        status.classList.add("is-success");
+        return res.json().catch(function () { return {}; }).then(function (body) { return { ok: res.ok, code: res.status, body: body }; });
+      }).then(function (result) {
+        if (result.ok) {
+          form.reset();
+          showStatus("success", "Consultation request sent. We'll reply by email to set up a time.");
+          return;
+        }
+        /* Turn Formspree's errors ({ field, message }) into readable sentences, and flag the field */
+        var labels = { name: "Name", email: "Email", message: "Message", phone: "Phone", business: "Business name" };
+        var fieldIds = { name: "f-name", email: "f-email", message: "f-msg" };
+        var reasons = (result.body && result.body.errors || []).map(function (err) {
+          if (!err || !err.message) return "";
+          if (fieldIds[err.field]) document.getElementById(fieldIds[err.field]).setAttribute("aria-invalid", "true");
+          var text = (labels[err.field] ? labels[err.field] + " " : "") + err.message;
+          text = text.charAt(0).toUpperCase() + text.slice(1);
+          return /[.!?]$/.test(text) ? text : text + ".";
+        }).filter(Boolean);
+        if (!reasons.length && result.code >= 500) {
+          showStatus("error", "Your request wasn't sent because our form service didn't respond. Try again in a minute.");
+          return;
+        }
+        showStatus("error", "Your request wasn't sent." + (reasons.length ? " " + reasons.join(" ") : "") + " Check the form and try again.");
       }).catch(function () {
-        mailto(data);
-        status.textContent = "Your email app opened with your request. Send it from there and we'll reply to set up a time.";
-        status.classList.add("is-success");
-      }).finally(function () {
+        showStatus("error", "Your request wasn't sent because the connection dropped. Check your internet connection and try again.");
+      }).then(function () {
         submit.disabled = false;
-        (submit.querySelector(".btn__label") || submit).textContent = "Book a consultation";
+        label.textContent = "Book a consultation";
       });
     });
   }
