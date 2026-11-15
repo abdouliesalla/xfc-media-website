@@ -213,6 +213,43 @@
     });
   }
 
+  /* ---------- Team bios: Read full bio / Show less ---------- */
+  $$("[data-bio]").forEach(function (bio) {
+    var btn = $("[data-bio-toggle]", bio);
+    var more = $(".bio__more", bio);
+    var label = $(".bio__label", btn);
+    var closedLabel = label.textContent;
+    var collapsed = function () { return parseFloat(getComputedStyle(bio).fontSize) * 4.8; };
+
+    btn.addEventListener("click", function () {
+      var open = btn.getAttribute("aria-expanded") !== "true";
+      btn.setAttribute("aria-expanded", String(open));
+      bio.classList.toggle("is-open", open);
+      label.textContent = open ? "Show less" : closedLabel;
+
+      if (reduceMotion.matches) { more.style.height = open ? "auto" : ""; return; }
+      var from = more.getBoundingClientRect().height;
+      var to = open ? more.scrollHeight : collapsed();
+      more.style.height = from + "px";
+      more.offsetHeight; // reflow so the transition starts from the current height
+      more.style.height = to + "px";
+      var settle = function (e) {
+        if (e && e.propertyName !== "height") return;
+        more.removeEventListener("transitionend", settle);
+        if (btn.getAttribute("aria-expanded") === "true") more.style.height = "auto";
+        else more.style.height = "";
+      };
+      more.addEventListener("transitionend", settle);
+      setTimeout(settle, 700);   /* safety net if transitionend doesn't fire */
+
+      /* Closing a long bio: bring the person back into view rather than leaving the reader below it */
+      if (!open) {
+        var top = bio.closest(".person").getBoundingClientRect().top;
+        if (top < 0) window.scrollBy({ top: top - 120, behavior: "smooth" });
+      }
+    });
+  });
+
   /* ---------- CTAs prefill the form ---------- */
   var industrySel = document.getElementById("f-industry");
   $$("[data-industry]").forEach(function (a) {
@@ -549,29 +586,9 @@
     if (document.fonts && document.fonts.ready) document.fonts.ready.then(start); else start();
   }
 
-  /* 2 + 3. Reel: fans open as you scroll, tilts toward the pointer */
+  /* 2. Reel: tilts gently toward the pointer (mouse and trackpad only) */
   var reel = document.querySelector("[data-reel]");
   if (!reel) return;
-  var panels = Array.prototype.slice.call(reel.children);
-  var left = panels[0], center = panels[1], right = panels[2];
-  var wide = window.matchMedia("(min-width: 701px)");
-
-  var scrollPending = false;
-  var applyScroll = function () {
-    scrollPending = false;
-    if (!wide.matches) { panels.forEach(function (p) { p.style.translate = ""; p.style.rotate = ""; p.style.scale = ""; }); return; }
-    var p = Math.min(1, Math.max(0, window.scrollY / (window.innerHeight * 0.85)));
-    left.style.translate = (-5 * p).toFixed(2) + "% " + (7 * p).toFixed(2) + "%";
-    left.style.rotate = (-3.5 * p).toFixed(2) + "deg";
-    right.style.translate = (5 * p).toFixed(2) + "% " + (7 * p).toFixed(2) + "%";
-    right.style.rotate = (3.5 * p).toFixed(2) + "deg";
-    center.style.scale = (1 + 0.05 * p).toFixed(4);
-  };
-  window.addEventListener("scroll", function () {
-    if (!scrollPending) { scrollPending = true; requestAnimationFrame(applyScroll); }
-  }, { passive: true });
-  wide.addEventListener("change", applyScroll);
-  applyScroll();
 
   if (finePointer) {
     var hero = document.querySelector(".hero");

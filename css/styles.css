@@ -166,7 +166,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
 }
 
 /* ---------- Hero ---------- */
-.hero { background: var(--black); color: var(--white); padding: clamp(8.5rem, 20vh, 12rem) var(--gutter) 0; overflow: hidden; }
+.hero { background: var(--black); color: var(--white); padding: clamp(7rem, 15vh, 10rem) var(--gutter) clamp(2.5rem, 5vw, 4rem); overflow: hidden; }
 .hero__copy { max-width: 1200px; margin-inline: auto; text-align: center; }
 .hero__title { font-size: var(--fs-display); font-weight: 600; letter-spacing: -0.035em; line-height: 0.94; }
 .hero__title .line { display: block; overflow: hidden; padding-bottom: 0.07em; }
@@ -179,14 +179,15 @@ button, input, select, textarea { font: inherit; color: inherit; }
 
 /* Reel: three rounded panels, the video in the centre */
 .reel {
-  display: grid; grid-template-columns: 1fr 1.08fr 1fr; align-items: end;
+  display: grid; grid-template-columns: 1.15fr 0.9fr 0.8fr; align-items: end;
   gap: clamp(0.625rem, 1.4vw, 1.25rem);
-  max-width: var(--max); margin: clamp(3.5rem, 8vw, 6rem) auto 0;
+  max-width: 1180px; margin: clamp(2.75rem, 5.5vw, 4.5rem) auto 0;
 }
 .reel__panel { position: relative; overflow: hidden; border-radius: var(--r-xl); background: #111316; }
 .reel__panel img, .reel__panel video { width: 100%; height: 100%; object-fit: cover; }
-.reel__panel--center { aspect-ratio: 9 / 13; }
+.reel__panel--center { aspect-ratio: 9 / 16; }
 .reel__panel--side { aspect-ratio: 4 / 5; }
+.reel__panel--side:last-child { aspect-ratio: 9 / 16; }
 .reel__panel figcaption {
   position: absolute; left: 14px; bottom: 14px; padding: 0.375rem 0.75rem;
   background: rgba(0, 0, 0, 0.62); color: var(--white); border-radius: var(--r-pill);
@@ -195,11 +196,14 @@ button, input, select, textarea { font: inherit; color: inherit; }
 }
 .reel__panel--center figcaption { max-width: calc(100% - 84px); }
 @media (max-width: 700px) {
-  .reel { grid-template-columns: 1fr 1fr; align-items: start; }
+  /* Phones: the ad (9:16) beside the photo (4:5), each in its own true shape */
+  .reel { grid-template-columns: 1fr 1.25fr; align-items: end; }
   .reel__panel--side:last-child { display: none; }
-  .reel__panel--center { order: -1; aspect-ratio: 9 / 15; }
-  .reel__panel--side { aspect-ratio: 9 / 15; }
-  /* Narrow panels: captions sit at the top, clear of the pause button, as compact labels */
+  .reel__panel--center { order: -1; aspect-ratio: 9 / 16; }
+  .reel__panel--side { aspect-ratio: 4 / 5; }
+}
+/* Phones and tablets: panels are narrow, so captions sit at the top, clear of the pause button */
+@media (max-width: 1000px) {
   .reel__panel figcaption,
   .reel__panel--center figcaption {
     top: 10px; bottom: auto; left: 10px; max-width: calc(100% - 20px);
@@ -253,7 +257,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
 }
 
 /* ---------- Clients marquee ---------- */
-.clients { background: var(--black); color: var(--white); padding: clamp(4rem, 8vw, 6.5rem) 0 clamp(4rem, 8vw, 6rem); text-align: center; }
+.clients { background: var(--black); color: var(--white); padding: clamp(2rem, 4vw, 3rem) 0 clamp(4rem, 8vw, 6rem); text-align: center; }
 .clients__title { font-size: var(--fs-sm); font-weight: 500; letter-spacing: 0; color: var(--gray-dark); margin-bottom: 2.5rem; padding-inline: var(--gutter); line-height: 1.4; }
 .marquee {
   display: flex; overflow: hidden; user-select: none;
@@ -464,7 +468,41 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .person__photo img { width: 100%; height: 100%; object-fit: cover; object-position: center 22%; }
 .person h3 { font-size: var(--fs-h3); letter-spacing: -0.02em; }
 .person__role { color: var(--blue-text); font-weight: 500; margin: 0.5rem 0 1rem; }
-.person__text > p:last-child { color: var(--gray); max-width: 36rem; }
+.person__text { max-width: 36rem; }
+
+/* Bio: the first paragraph in full, the rest as a soft preview that opens on request */
+.bio { color: var(--gray); }
+.bio p { margin: 0 0 1em; }
+.bio__lead { color: var(--black); font-size: 1.125rem; line-height: 1.55; }
+.bio__more { position: relative; overflow: hidden; }
+.bio__more > p:last-child { margin-bottom: 0; }
+.js .bio__more { height: 4.8em; transition: height 560ms var(--ease); }
+.js .bio__more::after {
+  content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 100%;
+  background: linear-gradient(to bottom, rgba(237, 238, 240, 0) 0%, var(--fog) 92%);
+  pointer-events: none; transition: opacity 420ms ease;
+}
+.js .bio.is-open .bio__more::after { opacity: 0; }
+.bio__toggle {
+  display: inline-flex; align-items: center; gap: 0.75rem; min-height: 44px;
+  margin-top: 1rem; padding: 0.25rem 0.25rem 0.25rem 0; background: none; border: 0; cursor: pointer;
+  font-family: var(--font-display); font-weight: 500; font-size: 1rem; color: var(--black);
+}
+.bio__toggle:hover .bio__label { color: var(--blue-text); }
+.bio__icon {
+  position: relative; flex: none; width: 36px; height: 36px; border-radius: 50%;
+  border: 1.5px solid var(--black); transition: background-color 240ms ease, color 240ms ease;
+}
+.bio__icon::before, .bio__icon::after {
+  content: ""; position: absolute; left: 50%; top: 50%; width: 12px; height: 1.5px; margin: -0.75px 0 0 -6px;
+  background: currentColor; transition: transform 420ms var(--ease);
+}
+.bio__icon::after { transform: rotate(90deg); }
+.bio.is-open .bio__icon { background: var(--black); color: var(--white); }
+.bio.is-open .bio__icon::after { transform: rotate(0deg); }
+.bio__label { transition: color 160ms ease; }
+/* Without JavaScript the full bio simply shows and the button isn't needed */
+html:not(.js) .bio__toggle { display: none; }
 @media (min-width: 800px) { .person:nth-child(2) { margin-top: clamp(3rem, 8vw, 7rem); } }
 
 /* ---------- Contact card ---------- */
@@ -694,7 +732,9 @@ button, input, select, textarea { font: inherit; color: inherit; }
   clip-path: inset(-0.05em -0.6em -0.24em -0.6em);
   transition: width 760ms var(--ease);
 }
-.swap__w { grid-area: 1 / 1; display: inline-block; white-space: nowrap; }
+/* Words hug the left of the box (right after "your"); the box resizes on its right edge */
+.swap__w { grid-area: 1 / 1; justify-self: start; text-align: left; display: inline-block; white-space: nowrap; }
+.swap.is-block .swap__w { justify-self: center; }
 .swap__w.is-in  { animation: word-in 760ms var(--ease) both; }
 .swap__w.is-out { animation: word-out 560ms var(--ease-in) both; }
 @keyframes word-in  { from { transform: translateY(135%); } }
